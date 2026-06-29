@@ -20,6 +20,7 @@ Bot:   It's 30°C (**86°F**) today and I drove 100 km/h (**62.14 mph**) for 26 
 
 - **Automatic detection** — every message is scanned; if it contains units, the bot replies with conversions. No command needed.
 - **`/convert` command** — `/convert 10 km to miles`, `/convert 72f`, `/convert 5'11"`. The auto-detector and the command share the exact same engine.
+- **Right-click → Convert** — a message context-menu command: right-click (or long-press) any message → **Apps → Convert Units** to convert it on demand. The reply is private (only you see it).
 - **Flexible formats** — `1M`, `1m`, `1 Meter`, `1 meter`, `1.5km`, `5,000 m`, `-40c`, `350F`, `5'11"`, `5 ft 11 in` all work.
 - **Many units & dimensions** — length, mass, temperature, volume, area, speed, and pressure, covering metric ⇄ imperial/US customary.
 - **Multiple units per message** — each one is converted independently.
@@ -111,6 +112,14 @@ Just talk normally. If a message contains a recognizable quantity, the bot repli
 If you omit a target (`... to <unit>`), each quantity is auto-converted to its
 metric/imperial counterpart.
 
+### Right-click a message → Convert Units
+
+Right-click (desktop) or long-press (mobile) any message → **Apps → Convert Units**.
+The bot converts every unit in that message and replies **privately** (only you
+see it) with the original text plus bolded conversions. Handy for older messages,
+or in servers where passive auto-detection is turned off. It runs the same engine
+as `/convert`, in explicit mode (so a spaced `5 in` counts as inches).
+
 ### Custom units (per server)
 
 Requires the **Manage Server** permission.
@@ -170,9 +179,10 @@ message / command text
    index.ts ───► analyze() + renderReply() rebuild the message with **bold**
 ```
 
-Both the passive scanner (`events/messageCreate.ts`) and `/convert`
-(`commands/convert.ts`) call the same `analyze` / `convertExpression` functions,
-so their behaviour can never drift apart.
+The passive scanner (`events/messageCreate.ts`), `/convert`
+(`commands/convert.ts`), and the right-click **Convert Units** command
+(`commands/convertMessage.ts`) all call the same `analyze` / `convertExpression`
+functions, so their behaviour can never drift apart.
 
 ---
 

@@ -7,10 +7,9 @@
  */
 import { REST, Routes } from 'discord.js';
 import { loadConfig } from '../config.js';
-import { commands } from '../commands/index.js';
+import { allCommandData } from '../commands/index.js';
 
 const config = loadConfig();
-const body = commands.map((c) => c.data.toJSON());
 const rest = new REST().setToken(config.token);
 
 const route = config.guildId
@@ -18,11 +17,11 @@ const route = config.guildId
   : Routes.applicationCommands(config.clientId);
 
 try {
-  await rest.put(route, { body });
+  await rest.put(route, { body: allCommandData });
   console.log(
-    `✅ Registered ${commands.length} command(s) ${
+    `✅ Registered ${allCommandData.length} command(s) ${
       config.guildId ? `to guild ${config.guildId}` : 'globally'
-    }: ${commands.map((c) => `/${c.data.name}`).join(', ')}`,
+    }: ${allCommandData.map((c) => c.name).join(', ')}`,
   );
 } catch (err) {
   console.error('Failed to register commands:', err);

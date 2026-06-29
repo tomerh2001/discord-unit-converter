@@ -1,5 +1,6 @@
 import type {
   ChatInputCommandInteraction,
+  MessageContextMenuCommandInteraction,
   RESTPostAPIApplicationCommandsJSONBody,
 } from 'discord.js';
 
@@ -10,6 +11,12 @@ import type {
 export interface Command {
   data: { name: string; toJSON(): RESTPostAPIApplicationCommandsJSONBody };
   execute(interaction: ChatInputCommandInteraction): Promise<void>;
+}
+
+/** A message context-menu command (right-click a message → Apps → …). */
+export interface MessageCommand {
+  data: { name: string; toJSON(): RESTPostAPIApplicationCommandsJSONBody };
+  execute(interaction: MessageContextMenuCommandInteraction): Promise<void>;
 }
 
 export const DISCORD_MESSAGE_LIMIT = 2000;
