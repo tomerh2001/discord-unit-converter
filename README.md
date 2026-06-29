@@ -20,7 +20,7 @@ Bot:   It's 30°C (**86°F**) today and I drove 100 km/h (**62.14 mph**) for 26 
 
 - **Automatic detection** — every message is scanned; if it contains units, the bot replies with conversions. No command needed.
 - **`/convert` command** — `/convert 10 km to miles`, `/convert 72f`, `/convert 5'11"`. The auto-detector and the command share the exact same engine.
-- **Right-click → Convert** — a message context-menu command: right-click (or long-press) any message → **Apps → Convert Units** to convert it on demand. It posts the result publicly as a reply under that message (a "no units found" notice stays private to you).
+- **Right-click → Convert** — a message context-menu command: right-click (or long-press) any message → **Apps → Convert Units** to convert it on demand. It posts the conversion publicly as the standard "used Convert Units" response (a "no units found" notice stays private to you).
 - **Flexible formats** — `1M`, `1m`, `1 Meter`, `1 meter`, `1.5km`, `5,000 m`, `-40c`, `350F`, `5'11"`, `5 ft 11 in` all work.
 - **Many units & dimensions** — length, mass, temperature, volume, area, speed, and pressure, covering metric ⇄ imperial/US customary.
 - **Multiple units per message** — each one is converted independently.
@@ -115,11 +115,11 @@ metric/imperial counterpart.
 ### Right-click a message → Convert Units
 
 Right-click (desktop) or long-press (mobile) any message → **Apps → Convert Units**.
-The bot converts every unit in that message and posts the result **publicly** as a
-reply under that message, with the original text plus bolded conversions (if no
-units are found, only you get a quiet notice). Handy for older messages, or in
-servers where passive auto-detection is turned off. It runs the same engine as
-`/convert`, in explicit mode (so a spaced `5 in` counts as inches).
+The bot converts every unit in that message and replies **publicly** — the
+standard "used Convert Units" response — with the original text plus bolded
+conversions (if no units are found, only you get a quiet notice). Handy for older
+messages, or in servers where passive auto-detection is turned off. It runs the
+same engine as `/convert`, in explicit mode (so a spaced `5 in` counts as inches).
 
 ### Custom units (per server)
 

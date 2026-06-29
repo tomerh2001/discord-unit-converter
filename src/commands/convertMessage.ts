@@ -10,13 +10,12 @@ import { truncateForDiscord, type MessageCommand } from './types.js';
 
 /**
  * Right-click a message → Apps → "Convert Units". Converts every unit in the
- * target message and posts the result publicly as a reply under that message —
- * the same render the passive scanner and /convert use.
+ * target message and replies publicly — the same render the passive scanner and
+ * /convert use.
  *
- * The interaction itself is acknowledged with an ephemeral defer that we delete
- * once the public reply is posted, so the only thing left in the channel is the
- * conversion (no "X used Convert Units" noise). A "no units found" outcome stays
- * private to the invoker.
+ * This is a plain public interaction reply, so Discord shows the standard
+ * "<user> used Convert Units" attribution above the result. A "no units found"
+ * outcome is sent ephemerally so it doesn't clutter the channel.
  *
  * Uses `explicit` mode because the user deliberately invoked it on this message,
  * so ambiguous tokens like a spaced "in"/"c"/"f" are accepted.
@@ -36,21 +35,17 @@ export const convertMessageCommand: MessageCommand = {
 
     const annotations = analyze(content, { customUnits, mode: 'explicit', precision });
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
     if (annotations.length === 0) {
-      await interaction.editReply({
+      await interaction.reply({
         content: "🤷 I couldn't find any convertible units in that message.",
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
-    // Post the conversion publicly, threaded under the original message.
-    await interaction.targetMessage.reply({
+    await interaction.reply({
       content: truncateForDiscord(renderReply(content, annotations)),
-      allowedMentions: { parse: [], repliedUser: false },
+      allowedMentions: { parse: [] },
     });
-    // Remove the private "thinking…" acknowledgement so nothing else is left.
-    await interaction.deleteReply();
   },
 };
