@@ -1,0 +1,52 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6571F3"/>
+      <stop offset="0.55" stop-color="#4F5BE0"/>
+      <stop offset="1" stop-color="#16C7B4"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.24" r="0.9">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0b1030" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="232" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="232" fill="url(#glow)"/>
+
+  <!-- conversion exchange glyph + ruler, grouped & centered -->
+  <g filter="url(#soft)" fill="none" stroke="#ffffff" stroke-width="40"
+     stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- top arrow: points right -->
+    <path d="M360 392 H648"/>
+    <path d="M596 340 L664 392 L596 444"/>
+
+    <!-- bottom arrow: points left -->
+    <path d="M664 520 H376"/>
+    <path d="M428 468 L360 520 L428 572"/>
+  </g>
+
+  <!-- ruler -->
+  <g filter="url(#soft)">
+    <rect x="300" y="638" width="424" height="150" rx="34" fill="#ffffff"/>
+    <!-- tick marks descending from the top edge -->
+    <g stroke="#4F5BE0" stroke-width="16" stroke-linecap="round">
+      <line x1="370" y1="638" x2="370" y2="712"/>
+      <line x1="441" y1="638" x2="441" y2="688"/>
+      <line x1="512" y1="638" x2="512" y2="712"/>
+      <line x1="583" y1="638" x2="583" y2="688"/>
+      <line x1="654" y1="638" x2="654" y2="712"/>
+    </g>
+  </g>
+
+  <!-- metric / imperial labels -->
+  <g fill="#ffffff" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="86" text-anchor="middle">
+    <text x="248" y="486">m</text>
+    <text x="784" y="486">ft</text>
+  </g>
+</svg>

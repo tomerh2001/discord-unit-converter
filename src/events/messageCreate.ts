@@ -74,6 +74,11 @@ export async function handleMessageCreate(message: Message): Promise<void> {
       // original text; repliedUser: false avoids pinging the author.
       allowedMentions: { parse: [], repliedUser: false },
     });
+    console.log(
+      `Replied to ${message.author.tag} with ${annotations.length} conversion(s): ${annotations
+        .map((a) => a.display)
+        .join(', ')}`,
+    );
   } catch (err) {
     console.error('messageCreate handler error:', err);
   }

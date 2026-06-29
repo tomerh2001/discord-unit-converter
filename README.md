@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.png" alt="discord-unit-converter logo" width="128" height="128">
+</p>
+
 # 📏 discord-unit-converter
 
 A Discord bot that **automatically converts units** between metric and imperial.
