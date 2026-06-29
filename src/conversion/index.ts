@@ -68,6 +68,49 @@ export function resolveUnit(name: string, customUnits: UnitDef[] = []): UnitDef 
   return resolveUnitStrict(name, customUnits);
 }
 
+// Matches the bot's own ` (**6.21 mi**)` style annotations.
+const ANNOTATION = /\s*\(\*\*([^*]+?)\*\*\)/g;
+
+/**
+ * Remove the bot's previously-inserted conversion annotations so a message that
+ * already contains conversions isn't converted again (which nests/duplicates
+ * them). Only strips parenthesised bold text that is *itself a single quantity*
+ * — ordinary bold or parenthetical text is left untouched. This makes the whole
+ * pipeline idempotent: converting a converted message reproduces it exactly.
+ */
+export function stripPriorConversions(text: string, customUnits: UnitDef[] = []): string {
+  return text.replace(ANNOTATION, (full, inner: string) => {
+    const trimmed = inner.trim();
+    const q = parseQuantities(trimmed, { customUnits, mode: 'explicit' });
+    const isSingleQuantity =
+      q.length === 1 && q[0]!.start === 0 && q[0]!.end === trimmed.length;
+    return isSingleQuantity ? '' : full;
+  });
+}
+
+export interface RenderedConversion {
+  /** The conversions found (empty if none). */
+  annotations: Annotation[];
+  /** The original text with prior conversions stripped. */
+  source: string;
+  /** `source` rebuilt with each conversion bolded inline. */
+  reply: string;
+}
+
+/**
+ * One-shot: strip any prior conversions, find every quantity, and render the
+ * message with bolded conversions. Used by both the passive scanner and the
+ * right-click command so they behave identically and idempotently.
+ */
+export function convertMessageContent(
+  content: string,
+  opts: AnalyzeOptions = {},
+): RenderedConversion {
+  const source = stripPriorConversions(content, opts.customUnits);
+  const annotations = analyze(source, opts);
+  return { annotations, source, reply: renderReply(source, annotations) };
+}
+
 // `in` is both a conversion keyword AND the inch alias, so we split on the
 // RIGHT-most keyword: `72 in to cm` → ["72 in", "cm"], not ["72", "in to cm"].
 // Space lookarounds (not \s+ ... \s+) so adjacent keywords don't eat the shared

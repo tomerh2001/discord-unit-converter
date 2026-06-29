@@ -9,7 +9,7 @@
  */
 import type { Message } from 'discord.js';
 import { loadConfig } from '../config.js';
-import { type Annotation, analyze, renderReply } from '../conversion/index.js';
+import { type Annotation, convertMessageContent } from '../conversion/index.js';
 import { getCustomUnits, getGuildConfig } from '../storage/customUnits.js';
 
 const DISCORD_MAX = 2000;
@@ -60,12 +60,16 @@ export async function handleMessageCreate(message: Message): Promise<void> {
       customUnits = getCustomUnits(guildId);
     }
 
-    const annotations = analyze(message.content, { customUnits, mode: 'auto', precision });
+    const { annotations, reply: rendered } = convertMessageContent(message.content, {
+      customUnits,
+      mode: 'auto',
+      precision,
+    });
     if (annotations.length === 0) return;
 
     if (onCooldown(message.channelId)) return;
 
-    let reply = renderReply(message.content, annotations);
+    let reply = rendered;
     if (reply.length > DISCORD_MAX) reply = compactReply(annotations);
 
     await message.reply({

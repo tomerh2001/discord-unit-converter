@@ -4,7 +4,7 @@ import {
   MessageFlags,
 } from 'discord.js';
 import { loadConfig } from '../config.js';
-import { analyze, renderReply } from '../conversion/index.js';
+import { convertMessageContent } from '../conversion/index.js';
 import { getCustomUnits, getGuildConfig } from '../storage/customUnits.js';
 import { truncateForDiscord, type MessageCommand } from './types.js';
 
@@ -33,7 +33,11 @@ export const convertMessageCommand: MessageCommand = {
       ? getGuildConfig(guildId).precision
       : loadConfig().defaultPrecision;
 
-    const annotations = analyze(content, { customUnits, mode: 'explicit', precision });
+    const { annotations, reply } = convertMessageContent(content, {
+      customUnits,
+      mode: 'explicit',
+      precision,
+    });
 
     if (annotations.length === 0) {
       await interaction.reply({
@@ -44,7 +48,7 @@ export const convertMessageCommand: MessageCommand = {
     }
 
     await interaction.reply({
-      content: truncateForDiscord(renderReply(content, annotations)),
+      content: truncateForDiscord(reply),
       allowedMentions: { parse: [] },
     });
   },
