@@ -68,7 +68,11 @@ export function resolveUnit(name: string, customUnits: UnitDef[] = []): UnitDef 
   return resolveUnitStrict(name, customUnits);
 }
 
-const TARGET_SPLIT = /^(.+?)\s+(?:to|into|in|as|->|=>)\s+(.+?)\s*$/i;
+// `in` is both a conversion keyword AND the inch alias, so we split on the
+// RIGHT-most keyword: `72 in to cm` → ["72 in", "cm"], not ["72", "in to cm"].
+// Space lookarounds (not \s+ ... \s+) so adjacent keywords don't eat the shared
+// space and hide each other.
+const SPLIT_KEYWORD = /(?<=\s)(?:to|into|in|as|->|=>)(?=\s)/gi;
 
 export interface ExpressionResult {
   lines: string[];
@@ -89,31 +93,33 @@ export function convertExpression(
   const expr = expression.trim();
   if (!expr) return { lines: [], error: 'Nothing to convert.' };
 
-  const explicit = expr.match(TARGET_SPLIT);
-  if (explicit) {
-    const left = explicit[1]!;
-    const targetName = explicit[2]!;
+  // Take the last keyword occurrence as the split point.
+  let lastSplit: RegExpMatchArray | null = null;
+  for (const m of expr.matchAll(SPLIT_KEYWORD)) lastSplit = m;
+
+  if (lastSplit) {
+    const left = expr.slice(0, lastSplit.index!);
+    const targetName = expr.slice(lastSplit.index! + lastSplit[0].length).trim();
     const target = resolveUnit(targetName, customUnits);
-    if (target) {
-      const quantities = parseQuantities(left, { customUnits, mode: 'explicit' });
-      if (quantities.length === 0) {
-        return { lines: [], error: `Couldn't read a quantity from "${left.trim()}".` };
-      }
-      const lines: string[] = [];
-      for (const q of quantities) {
+    const quantities = parseQuantities(left, { customUnits, mode: 'explicit' });
+
+    if (target && quantities.length > 0) {
+      const lines = quantities.map((q) => {
         if (q.unit.dimension !== target.dimension) {
-          lines.push(
-            `❌ ${formatQuantity(q.value, q.unit, precision)} → ${target.symbol}: incompatible (${q.unit.dimension} vs ${target.dimension}).`,
-          );
-          continue;
+          return `❌ ${formatQuantity(q.value, q.unit, precision)} → ${target.symbol}: incompatible (${q.unit.dimension} vs ${target.dimension}).`;
         }
         const result = convertTo(q.value, q.unit, target, precision);
-        lines.push(`${formatQuantity(q.value, q.unit, precision)} = **${result.display}**`);
-      }
+        return `${formatQuantity(q.value, q.unit, precision)} = **${result.display}**`;
+      });
       return { lines };
     }
-    // Unknown explicit target: fall through to auto handling of the whole
-    // expression rather than erroring outright.
+
+    // The user clearly named a target but we don't know it — say so rather than
+    // silently auto-converting to a different unit.
+    if (!target && targetName && quantities.length > 0) {
+      return { lines: [], error: `Unknown unit "${targetName}".` };
+    }
+    // Otherwise the split was probably spurious; fall through to auto-detect.
   }
 
   // Implicit: auto-convert every quantity we can find.

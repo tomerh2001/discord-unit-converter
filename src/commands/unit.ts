@@ -1,4 +1,5 @@
 import {
+  InteractionContextType,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
@@ -9,11 +10,15 @@ import {
   resolveUnit,
 } from '../conversion/index.js';
 import {
+  countCustomUnits,
   getCustomUnits,
   removeCustomUnit,
   saveCustomUnit,
 } from '../storage/customUnits.js';
-import { DIMENSION_BASE_SYMBOL, type Command } from './types.js';
+import { DIMENSION_BASE_SYMBOL, truncateForDiscord, type Command } from './types.js';
+
+/** Max custom units per guild, to bound DB growth and the parser's alias regex. */
+const MAX_CUSTOM_UNITS = 100;
 
 function canManage(interaction: Parameters<Command['execute']>[0]): boolean {
   return interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
@@ -23,7 +28,7 @@ export const unitCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('unit')
     .setDescription('Manage custom units for this server')
-    .setDMPermission(false)
+    .setContexts(InteractionContextType.Guild)
     .addSubcommand((sub) =>
       sub
         .setName('add')
@@ -60,7 +65,10 @@ export const unitCommand: Command = {
         const names = u.aliases.join(', ');
         return `• **${u.aliases[0]}** (${u.symbol}) = ${u.toBase} ${base} — _${u.dimension}_ · aliases: ${names}`;
       });
-      await interaction.reply({ content: lines.join('\n'), flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: truncateForDiscord(lines.join('\n')),
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
 
@@ -93,15 +101,26 @@ export const unitCommand: Command = {
     const existing = getCustomUnits(guildId);
     try {
       const unit = defineCustomUnit({ guildId, name, symbol, factor, per, aliases }, existing);
+      const isReplacing = existing.some((e) => e.aliases[0] === unit.aliases[0]);
 
-      // Reject aliases that would shadow a built-in unit.
+      // Enforce a per-guild cap (replacing an existing unit is always allowed).
+      if (!isReplacing && countCustomUnits(guildId) >= MAX_CUSTOM_UNITS) {
+        await interaction.reply({
+          content: `⚠️ This server already has the maximum of ${MAX_CUSTOM_UNITS} custom units. Remove one first.`,
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      // Reject aliases that shadow a built-in OR another existing custom unit.
       const clash = unit.aliases.find((a) => {
-        const found = resolveUnit(a);
-        return found && !found.custom;
+        const builtin = resolveUnit(a);
+        if (builtin && !builtin.custom) return true;
+        return existing.some((e) => e.aliases[0] !== unit.aliases[0] && e.aliases.includes(a));
       });
       if (clash) {
         await interaction.reply({
-          content: `⚠️ The alias \`${clash}\` is already a built-in unit. Pick a different name/symbol.`,
+          content: `⚠️ The alias \`${clash}\` is already used by another unit. Pick a different name/symbol.`,
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -111,6 +130,7 @@ export const unitCommand: Command = {
       const base = resolveUnit(per);
       await interaction.reply({
         content: `✅ Added **${name}** (${symbol}): 1 ${name} = ${factor} ${base?.symbol ?? per}. It will now be auto-detected and available in \`/convert\`.`,
+        allowedMentions: { parse: [] },
       });
     } catch (err) {
       const message = err instanceof CustomUnitError ? err.message : 'Could not define that unit.';

@@ -31,6 +31,29 @@ describe('parseQuantities — formats', () => {
     expect(ids(`6'`)).toEqual([{ id: 'foot', value: 6 }]);
     expect(ids(`6"`)).toEqual([{ id: 'inch', value: 6 }]);
   });
+
+  it('matches mobile smart-quotes for height (5’11”)', () => {
+    expect(ids('she is 5’11” tall')).toEqual([{ id: 'inch', value: 71 }]);
+    expect(ids('it is 6’ wide')).toEqual([{ id: 'foot', value: 6 }]);
+  });
+
+  it('keeps the sign on negative compounds', () => {
+    expect(ids(`-5'11"`)).toEqual([{ id: 'inch', value: -71 }]);
+  });
+});
+
+describe('parseQuantities — robustness against bridging / malformed input', () => {
+  it('does not bridge feet-inches across prose or unrelated numbers', () => {
+    // mixed apostrophe + worded "in" is not a real compound
+    expect(ids(`5' 11 in the morning`)).toEqual([{ id: 'foot', value: 5 }]);
+    // inches are bounded to 1–2 digits, so a stray 100 is not swallowed
+    expect(ids('5ft 100 in total')).toEqual([{ id: 'foot', value: 5 }]);
+  });
+
+  it('does not emit a bogus value from malformed thousands grouping', () => {
+    expect(ids('12,34 m of cable')).toEqual([]);
+    expect(ids('1,234 m')).toEqual([{ id: 'meter', value: 1234 }]);
+  });
 });
 
 describe('parseQuantities — false-positive avoidance', () => {

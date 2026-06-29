@@ -85,7 +85,8 @@ describe('formatQuantity', () => {
     expect(formatQuantity(6.21, u('mile'), 2)).toBe('6.21 mi');
     expect(formatQuantity(2.2, u('pound'), 2)).toBe('2.2 lb');
   });
-  it('large numbers get thousands separators', () => {
-    expect(convertTo(1, u('acre'), u('sqmeter'), 2).display).toBe('4,047 m²');
+  it('large numbers get thousands separators and honour precision', () => {
+    expect(convertTo(1, u('acre'), u('sqmeter'), 2).display).toBe('4,046.86 m²');
+    expect(convertTo(1, u('acre'), u('sqmeter'), 0).display).toBe('4,047 m²');
   });
 });

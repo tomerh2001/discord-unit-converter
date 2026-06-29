@@ -19,7 +19,13 @@ const client = new Client({
     GatewayIntentBits.DirectMessages,
   ],
   partials: [Partials.Channel], // required to receive direct messages
+  // Default: never ping anyone. Individual replies can opt back in if needed.
+  allowedMentions: { parse: [] },
 });
+
+// A bug in one guild's data must not crash the bot for everyone. Log and live.
+process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason));
+process.on('uncaughtException', (err) => console.error('Uncaught exception:', err));
 
 client.once(Events.ClientReady, handleReady);
 client.on(Events.InteractionCreate, handleInteraction);

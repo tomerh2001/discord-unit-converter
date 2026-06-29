@@ -38,14 +38,16 @@ describe('defineCustomUnit', () => {
   });
 
   it('rejects invalid definitions', () => {
-    expect(() =>
-      defineCustomUnit({ guildId: 'g', name: 'x', symbol: 'x', factor: 0, per: 'm' }),
-    ).toThrow(CustomUnitError);
-    expect(() =>
-      defineCustomUnit({ guildId: 'g', name: 'x', symbol: 'x', factor: 1, per: 'nonsense' }),
-    ).toThrow(CustomUnitError);
-    expect(() =>
-      defineCustomUnit({ guildId: 'g', name: 'x', symbol: 'x', factor: 1, per: 'celsius' }),
-    ).toThrow(CustomUnitError);
+    const bad = [
+      { guildId: 'g', name: 'foo', symbol: 'fo', factor: 0, per: 'm' }, // zero factor
+      { guildId: 'g', name: 'foo', symbol: 'fo', factor: 1, per: 'nonsense' }, // unknown base
+      { guildId: 'g', name: 'foo', symbol: 'fo', factor: 1, per: 'celsius' }, // temperature
+      { guildId: 'g', name: 'x', symbol: 'fo', factor: 1, per: 'm' }, // 1-char name
+      { guildId: 'g', name: 'foo', symbol: '@e', factor: 1, per: 'm' }, // invalid chars
+      { guildId: 'g', name: 'foo', symbol: 'fo', factor: 1e308, per: 'kg' }, // overflow
+    ];
+    for (const input of bad) {
+      expect(() => defineCustomUnit(input), JSON.stringify(input)).toThrow(CustomUnitError);
+    }
   });
 });

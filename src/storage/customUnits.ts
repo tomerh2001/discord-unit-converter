@@ -19,13 +19,27 @@ interface CustomUnitRow {
   created_by: string | null;
 }
 
+/** Parse the stored aliases JSON, tolerating corruption rather than throwing. */
+function parseAliases(raw: string, fallbackName: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const strings = parsed.filter((a): a is string => typeof a === 'string' && a.length > 0);
+      if (strings.length > 0) return strings;
+    }
+  } catch {
+    // fall through to the fallback below
+  }
+  return [fallbackName];
+}
+
 function rowToUnit(row: CustomUnitRow): UnitDef {
   return {
     id: `custom:${row.guild_id}:${row.name}`,
     dimension: row.dimension as DimensionName,
     system: row.system as UnitSystem,
     symbol: row.symbol,
-    aliases: JSON.parse(row.aliases) as string[],
+    aliases: parseAliases(row.aliases, row.name),
     toBase: row.to_base,
     offset: row.offset,
     custom: true,
@@ -39,6 +53,14 @@ export function getCustomUnits(guildId: string): UnitDef[] {
     .prepare('SELECT * FROM custom_units WHERE guild_id = ?')
     .all(guildId) as CustomUnitRow[];
   return rows.map(rowToUnit);
+}
+
+/** How many custom units a guild currently has. */
+export function countCustomUnits(guildId: string): number {
+  const row = getDb()
+    .prepare('SELECT COUNT(*) AS n FROM custom_units WHERE guild_id = ?')
+    .get(guildId) as { n: number };
+  return row.n;
 }
 
 /** Persist (insert or replace) a resolved custom unit. */

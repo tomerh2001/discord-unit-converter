@@ -44,13 +44,6 @@ export interface UnitDef {
   toBase: number;
   /** Additive offset to the base unit (used for temperature). Defaults to 0. */
   offset?: number;
-  /**
-   * Marks aliases that collide with everyday English words (e.g. `in`). Such
-   * units are only auto-detected when the alias is written attached to the
-   * number (`5in`) or via an unambiguous spelling (`inch`), never as a bare
-   * spaced token, to avoid false positives in normal sentences.
-   */
-  ambiguous?: boolean;
   /** Optional: marks a unit defined at runtime by a server (custom unit). */
   custom?: boolean;
   /** Optional: guild that owns this custom unit. */

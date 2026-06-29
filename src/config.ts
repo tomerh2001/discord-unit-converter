@@ -39,7 +39,9 @@ export function loadConfig(): Config {
     clientId: required('CLIENT_ID'),
     guildId: process.env.GUILD_ID?.trim() || undefined,
     dataDir: process.env.DATA_DIR?.trim() || './data',
-    defaultPrecision: optionalInt('DEFAULT_PRECISION', 2),
+    // Clamp to the same 0–6 range the /settings command enforces, so a bad env
+    // value can't reach toFixed/toPrecision and throw a RangeError.
+    defaultPrecision: Math.min(Math.max(optionalInt('DEFAULT_PRECISION', 2), 0), 6),
     autoDetectDefault: (process.env.AUTO_DETECT_DEFAULT ?? 'true').toLowerCase() !== 'false',
   };
   return cached;

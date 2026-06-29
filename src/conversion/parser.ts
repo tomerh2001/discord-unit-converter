@@ -31,9 +31,25 @@ function maskNoise(text: string): string {
   return out;
 }
 
-/** Feet-and-inches compounds: 5'11", 5' 11", 5 ft 11 in, 5feet11inches. */
+/**
+ * Map smart/curly quotes and primes to their straight forms, so the parser only
+ * has to reason about `'` and `"`. Length-preserving (each is one code unit),
+ * so character indices stay aligned with the original text.
+ */
+function normalizeQuotes(text: string): string {
+  return text.replace(/[‘’′]/g, "'").replace(/[“”″]/g, '"');
+}
+
+/**
+ * Feet-and-inches compounds: 5'11", 5' 11", 5 ft 11 in, 5feet11inches.
+ *
+ * Two style-consistent branches — symbolic (`5'11"`) or worded (`5 ft 11 in`) —
+ * but never mixed (`5' 11 in the morning` must NOT parse as 71"). Inches are
+ * bounded to 1–2 digits so a stray later number can't be swallowed
+ * (`5ft 100 in total`), and gaps use `[ \t]` so the match can't cross lines.
+ */
 const FEET_INCHES =
-  /(?<![\p{L}\p{N}.])([-+]?\d+(?:\.\d+)?)\s*(?:'|′|ft|feet|foot)\s*(\d+(?:\.\d+)?)\s*(?:"|″|''|in|inch|inches)(?![\p{L}])/giu;
+  /(?<![\p{L}\p{N}.])(?:([-+]?\d+(?:\.\d+)?)[ \t]*'[ \t]*(\d{1,2}(?:\.\d+)?)[ \t]*(?:"|'')|([-+]?\d+(?:\.\d+)?)[ \t]*(?:ft|feet|foot)[ \t]*(\d{1,2}(?:\.\d+)?)[ \t]*(?:in|inch|inches))(?![\p{L}])/giu;
 
 let cachedBuiltinAlt: string | null = null;
 
@@ -68,7 +84,7 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
   const index = buildAliasIndex(customUnits);
   const inch = index.get('inch');
 
-  let work = maskNoise(text);
+  let work = normalizeQuotes(maskNoise(text));
   const results: ParsedQuantity[] = [];
 
   // ── Pass 1: feet + inches compounds ──────────────────────────────────
@@ -76,9 +92,12 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
     for (const m of work.matchAll(FEET_INCHES)) {
       const start = m.index!;
       const end = start + m[0].length;
-      const feet = parseFloat(m[1]!);
-      const inches = parseFloat(m[2]!);
-      const totalInches = feet * 12 + inches;
+      const feetStr = m[1] ?? m[3]!;
+      const inches = parseFloat(m[2] ?? m[4]!);
+      const feet = parseFloat(feetStr);
+      // The sign belongs to the whole height, so negate inches too (-5'11" = -71").
+      const sign = feet < 0 ? -1 : 1;
+      const totalInches = sign * (Math.abs(feet) * 12 + inches);
       results.push({
         start,
         end,
@@ -94,7 +113,9 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
   // ── Pass 2: generic <number><unit> ───────────────────────────────────
   const alt = aliasAlternation(index, customUnits.length > 0);
   const generic = new RegExp(
-    `(?<![\\p{L}\\p{N}.])(${NUMBER})(\\s*)(${alt})(?![\\p{L}])`,
+    // The comma in the lookbehind stops a malformed group like `12,34` from
+    // re-matching its trailing fragment (`34`) as a fresh number.
+    `(?<![\\p{L}\\p{N}.,])(${NUMBER})(\\s*)(${alt})(?![\\p{L}])`,
     'giu',
   );
 

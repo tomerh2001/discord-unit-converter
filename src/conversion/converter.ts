@@ -86,15 +86,18 @@ export function formatNumber(n: number, precision: number): string {
   if (!Number.isFinite(n)) return String(n);
   if (n === 0) return '0';
 
+  // Clamp to a safe range: toPrecision/toFixed throw outside 0..100, and the
+  // env-configured precision is otherwise unbounded.
+  const p = Math.min(Math.max(Math.trunc(precision), 0), 12);
   const abs = Math.abs(n);
   let rounded: number;
   if (abs < 1) {
     // Keep significant figures for small magnitudes (e.g. 0.0394 in).
-    rounded = Number(n.toPrecision(Math.max(precision, 2)));
-  } else if (abs >= 1000) {
-    rounded = Math.round(n);
+    rounded = Number(n.toPrecision(Math.min(Math.max(p, 2), 100)));
   } else {
-    const factor = 10 ** precision;
+    // Honour the requested precision at every magnitude (the per-guild setting
+    // and explicit /convert intent should not be silently overridden).
+    const factor = 10 ** p;
     rounded = Math.round(n * factor) / factor;
   }
   // Intl gives grouping + trims trailing zeros automatically.

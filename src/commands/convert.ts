@@ -2,7 +2,7 @@ import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { loadConfig } from '../config.js';
 import { convertExpression } from '../conversion/index.js';
 import { getCustomUnits, getGuildConfig } from '../storage/customUnits.js';
-import type { Command } from './types.js';
+import { truncateForDiscord, type Command } from './types.js';
 
 export const convertCommand: Command = {
   data: new SlashCommandBuilder()
@@ -29,6 +29,6 @@ export const convertCommand: Command = {
       await interaction.reply({ content: `⚠️ ${error}`, flags: MessageFlags.Ephemeral });
       return;
     }
-    await interaction.reply({ content: lines.join('\n') });
+    await interaction.reply({ content: truncateForDiscord(lines.join('\n')) });
   },
 };

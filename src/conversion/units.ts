@@ -69,7 +69,7 @@ const RAW_UNITS: RawUnit[] = [
   { id: 'milliliter', dimension: 'volume', system: 'metric', symbol: 'ml', toBase: 0.001,     aliases: ['ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres', 'cc'] },
   { id: 'liter',      dimension: 'volume', system: 'metric', symbol: 'L',  toBase: 1,          aliases: ['l', 'liter', 'liters', 'litre', 'litres', 'ltr'] },
   { id: 'teaspoon',   dimension: 'volume', system: 'us', symbol: 'tsp', toBase: 0.00492892159375,  aliases: ['tsp', 'teaspoon', 'teaspoons'], autoTargetExclude: true },
-  { id: 'tablespoon', dimension: 'volume', system: 'us', symbol: 'tbsp', toBase: 0.0147867648, aliases: ['tbsp', 'tablespoon', 'tablespoons'], autoTargetExclude: true },
+  { id: 'tablespoon', dimension: 'volume', system: 'us', symbol: 'tbsp', toBase: 0.01478676478125, aliases: ['tbsp', 'tablespoon', 'tablespoons'], autoTargetExclude: true },
   { id: 'fluidounce', dimension: 'volume', system: 'us', symbol: 'fl oz', toBase: 0.0295735295625, aliases: ['fl oz', 'floz', 'fluid ounce', 'fluid ounces'] },
   { id: 'cup',        dimension: 'volume', system: 'us', symbol: 'cup', toBase: 0.2365882365,  aliases: ['cup', 'cups'] },
   { id: 'pint',       dimension: 'volume', system: 'us', symbol: 'pt', toBase: 0.473176473,    aliases: ['pint', 'pints'] },
