@@ -3,9 +3,8 @@ import {
   ContextMenuCommandBuilder,
   MessageFlags,
 } from 'discord.js';
-import { loadConfig } from '../config.js';
 import { convertMessageContent } from '../conversion/index.js';
-import { getCustomUnits, getGuildConfig } from '../storage/customUnits.js';
+import { guildUnitContext } from './context.js';
 import { truncateForDiscord, type MessageCommand } from './types.js';
 
 /**
@@ -27,14 +26,14 @@ export const convertMessageCommand: MessageCommand = {
 
   async execute(interaction) {
     const content = interaction.targetMessage.content ?? '';
-    const guildId = interaction.guildId;
-    const customUnits = guildId ? getCustomUnits(guildId) : [];
-    const precision = guildId
-      ? getGuildConfig(guildId).precision
-      : loadConfig().defaultPrecision;
+    const { customUnits, currencyUnits, precision, baseCurrency } = guildUnitContext(
+      interaction.guildId,
+    );
 
     const { annotations, reply } = convertMessageContent(content, {
       customUnits,
+      currencyUnits,
+      baseCurrency,
       mode: 'explicit',
       precision,
     });

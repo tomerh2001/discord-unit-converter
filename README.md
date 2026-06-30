@@ -23,9 +23,10 @@ Bot:   It's 30°C (**86°F**) today and I drove 100 km/h (**62.14 mph**) for 26 
 - **Right-click → Convert** — a message context-menu command: right-click (or long-press) any message → **Apps → Convert Units** to convert it on demand. It posts the conversion publicly as the standard "used Convert Units" response (a "no units found" notice stays private to you).
 - **Flexible formats** — `1M`, `1m`, `1 Meter`, `1 meter`, `1.5km`, `5,000 m`, `-40c`, `350F`, `5'11"`, `5 ft 11 in` all work.
 - **Many units & dimensions** — length, mass, temperature, volume, area, speed, and pressure, covering metric ⇄ imperial/US customary.
+- **Currencies** — live exchange rates for 25+ currencies; understands `$5`, `5$`, `1B USD`, `1 bil usd`, `$1.5B`, `5 dollars`, and converts to a per-server base currency (default USD). On-demand only (`/convert` & right-click), not passive.
 - **Multiple units per message** — each one is converted independently.
 - **Smart targets** — picks a sensible counterpart by magnitude (10 km → miles, 30 cm → inches).
-- **Custom units per server** — `/unit add` lets admins define server-specific units (e.g. a smoot).
+- **Custom units & currencies per server** — `/unit add` defines server-specific units (a smoot) *or* currencies (`1 billion Mesos = 2.5 USD`).
 - **Sensible & safe** — ignores units inside code blocks, inline code, and links, and avoids firing on ambiguous words like “in” in normal prose.
 
 ---
@@ -107,10 +108,27 @@ Just talk normally. If a message contains a recognizable quantity, the bot repli
 /convert expression: 72f                  → 72°F = 22.22°C
 /convert expression: 5 kg and 200 g       → two lines, each converted
 /convert expression: 60 mph in km/h       → 60 mph = 96.56 km/h
+/convert expression: $100 to EUR          → $100.00 = €87.60   (live rate)
+/convert expression: 1.5B USD to ILS      → $1,500,000,000.00 = ₪…
 ```
 
 If you omit a target (`... to <unit>`), each quantity is auto-converted to its
-metric/imperial counterpart.
+metric/imperial counterpart (or, for money, to the server's base currency).
+
+### Currencies
+
+Money is converted **on demand** (via `/convert` or right-click — never passively,
+to avoid the bot reacting to every `$5` in chat). It understands lots of formats:
+
+| You type | Means |
+| --- | --- |
+| `$5`, `5$`, `5 USD`, `5 dollars` | 5 US dollars |
+| `€10`, `£20`, `₪50` | euros / pounds / shekels |
+| `1B USD`, `1 bil usd`, `$1.5B`, `1 billion dollars` | magnitudes: k / M / B / T |
+
+Rates are pulled live (25+ currencies) and refreshed periodically. Each server has
+a **base currency** (default USD) that amounts convert into — change it with
+`/settings basecurrency code: EUR`.
 
 ### Right-click a message → Convert Units
 
@@ -121,19 +139,29 @@ conversions (if no units are found, only you get a quiet notice). Handy for olde
 messages, or in servers where passive auto-detection is turned off. It runs the
 same engine as `/convert`, in explicit mode (so a spaced `5 in` counts as inches).
 
-### Custom units (per server)
+### Custom units & currencies (per server)
 
-Requires the **Manage Server** permission.
+Requires the **Manage Server** permission. A custom unit is declared as a rate —
+`<rate_amount> <name> = <equals>` — and inherits the dimension of whatever it's
+defined against, so it converts just like a built-in.
 
 ```
-/unit add name: smoot symbol: smt factor: 1.7018 per: m
-        → 1 smoot = 1.7018 m, now auto-detected and usable in /convert
+# a physical unit
+/unit add name: smoot   symbol: smt  equals: 1.7018 m
+        → 1 smoot = 1.7018 m
+
+# a custom currency (MapleStory Mesos)
+/unit add name: mesos   symbol: Mz   equals: 2.5 USD   rate_amount: 1 billion
+        → 1,000,000,000 mesos = $2.50   (so 1 billion mesos ≈ $2.50)
+
 /unit list
-/unit remove name: smoot
+/unit remove name: mesos
 ```
 
-A custom unit is defined relative to an existing one and inherits its dimension,
-so it converts to the opposite system automatically.
+`rate_amount` defaults to `1` and accepts magnitudes (`1 billion`, `1B`).
+`equals` is any quantity — `2.5 USD`, `1.7018 m`, `100 cm`. Custom currencies
+pegged to USD are exact; pegged to another currency, they use the rate at
+creation time (re-add to refresh).
 
 ### Server settings
 
@@ -142,6 +170,7 @@ Requires the **Manage Server** permission.
 ```
 /settings autodetect enabled: false   → turn off automatic scanning
 /settings precision digits: 1          → show 1 decimal place
+/settings basecurrency code: EUR       → money converts into EUR by default
 /settings view                         → show current settings
 ```
 
@@ -158,6 +187,7 @@ Requires the **Manage Server** permission.
 | **Area** | mm², cm², m², hectare, km² | in², ft², yd², acre, mi² |
 | **Speed** | m/s, km/h | mph, ft/s, knot |
 | **Pressure** | Pa, kPa, bar, mbar, atm | psi |
+| **Currency** | USD, EUR, GBP, JPY, ILS, INR, CNY, CAD, AUD, CHF, and 15+ more (live rates) | — converts to the server base currency |
 
 Each unit accepts several spellings/abbreviations (e.g. `meter`, `metre`,
 `meters`, `m`). See [`src/conversion/units.ts`](src/conversion/units.ts) for the

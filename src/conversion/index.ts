@@ -3,6 +3,7 @@
  * the `/convert` command go through these functions, so their behaviour stays
  * identical.
  */
+import { BASE_CURRENCY } from './currencies.js';
 import { convertAuto, convertTo, formatQuantity } from './converter.js';
 import { parseQuantities } from './parser.js';
 import { resolveUnitStrict } from './resolve.js';
@@ -14,32 +15,72 @@ export { convert, convertTo, convertAuto, formatQuantity } from './converter.js'
 export { parseQuantities } from './parser.js';
 export { defineCustomUnit, CustomUnitError } from './custom.js';
 export type { CustomUnitInput } from './custom.js';
+export {
+  getCurrencyUnits,
+  currencyUnit,
+  fetchRates,
+  setRates,
+  getRatesSnapshot,
+  ratesAgeMs,
+  hasRates,
+} from './rates.js';
+export type { RatesSnapshot } from './rates.js';
+export { CURRENCIES, BASE_CURRENCY, parseMagnitudeNumber } from './currencies.js';
 
 /** Hard cap on conversions per message, to bound output size. */
 const MAX_ANNOTATIONS = 25;
 
 export interface AnalyzeOptions {
   customUnits?: UnitDef[];
+  /** Currency units (built-in fiat + custom). Only used in `explicit` mode. */
+  currencyUnits?: UnitDef[];
+  /** Target currency code for money conversions (default USD). */
+  baseCurrency?: string;
   mode?: ConversionMode;
   precision?: number;
 }
 
+/** The base-currency UnitDef to convert money into, given a code. */
+function baseCurrencyUnit(currencyUnits: UnitDef[], code: string): UnitDef | undefined {
+  const id = `currency:${code.toUpperCase()}`;
+  return currencyUnits.find((u) => u.id === id);
+}
+
 /**
- * Find every quantity in `text` and convert it to its automatic counterpart.
- * Quantities with no sensible counterpart (or already on the target side) are
+ * Find every quantity in `text` and convert it. Physical units go to their
+ * automatic metric/imperial counterpart; currencies go to the configured base
+ * currency. Quantities with no sensible target (or already the target) are
  * dropped.
  */
 export function analyze(text: string, opts: AnalyzeOptions = {}): Annotation[] {
   const precision = opts.precision ?? 2;
+  const currencyUnits = opts.currencyUnits ?? [];
+  const baseUnit = baseCurrencyUnit(currencyUnits, opts.baseCurrency ?? BASE_CURRENCY);
+
   const quantities = parseQuantities(text, {
     customUnits: opts.customUnits,
+    currencyUnits,
     mode: opts.mode ?? 'auto',
   });
 
   const annotations: Annotation[] = [];
   for (const q of quantities) {
     if (annotations.length >= MAX_ANNOTATIONS) break;
-    const result = convertAuto(q.value, q.unit, precision);
+
+    let result;
+    if (q.unit.dimension === 'currency') {
+      // Convert money to the base currency; skip if it's already the base or we
+      // have no rate to convert with.
+      if (!baseUnit || baseUnit.id === q.unit.id) continue;
+      try {
+        result = convertTo(q.value, q.unit, baseUnit, precision);
+      } catch {
+        continue;
+      }
+    } else {
+      result = convertAuto(q.value, q.unit, precision);
+    }
+
     if (!result) continue;
     annotations.push({ ...result, start: q.start, end: q.end, raw: q.raw });
   }
@@ -78,10 +119,14 @@ const ANNOTATION = /\s*\(\*\*([^*]+?)\*\*\)/g;
  * — ordinary bold or parenthetical text is left untouched. This makes the whole
  * pipeline idempotent: converting a converted message reproduces it exactly.
  */
-export function stripPriorConversions(text: string, customUnits: UnitDef[] = []): string {
+export function stripPriorConversions(
+  text: string,
+  customUnits: UnitDef[] = [],
+  currencyUnits: UnitDef[] = [],
+): string {
   return text.replace(ANNOTATION, (full, inner: string) => {
     const trimmed = inner.trim();
-    const q = parseQuantities(trimmed, { customUnits, mode: 'explicit' });
+    const q = parseQuantities(trimmed, { customUnits, currencyUnits, mode: 'explicit' });
     const isSingleQuantity =
       q.length === 1 && q[0]!.start === 0 && q[0]!.end === trimmed.length;
     return isSingleQuantity ? '' : full;
@@ -106,7 +151,7 @@ export function convertMessageContent(
   content: string,
   opts: AnalyzeOptions = {},
 ): RenderedConversion {
-  const source = stripPriorConversions(content, opts.customUnits);
+  const source = stripPriorConversions(content, opts.customUnits, opts.currencyUnits);
   const annotations = analyze(source, opts);
   return { annotations, source, reply: renderReply(source, annotations) };
 }
@@ -129,10 +174,17 @@ export interface ExpressionResult {
  */
 export function convertExpression(
   expression: string,
-  opts: { customUnits?: UnitDef[]; precision?: number } = {},
+  opts: {
+    customUnits?: UnitDef[];
+    currencyUnits?: UnitDef[];
+    baseCurrency?: string;
+    precision?: number;
+  } = {},
 ): ExpressionResult {
   const precision = opts.precision ?? 2;
   const customUnits = opts.customUnits ?? [];
+  const currencyUnits = opts.currencyUnits ?? [];
+  const resolveExtra = [...customUnits, ...currencyUnits];
   const expr = expression.trim();
   if (!expr) return { lines: [], error: 'Nothing to convert.' };
 
@@ -143,8 +195,8 @@ export function convertExpression(
   if (lastSplit) {
     const left = expr.slice(0, lastSplit.index!);
     const targetName = expr.slice(lastSplit.index! + lastSplit[0].length).trim();
-    const target = resolveUnit(targetName, customUnits);
-    const quantities = parseQuantities(left, { customUnits, mode: 'explicit' });
+    const target = resolveUnit(targetName, resolveExtra);
+    const quantities = parseQuantities(left, { customUnits, currencyUnits, mode: 'explicit' });
 
     if (target && quantities.length > 0) {
       const lines = quantities.map((q) => {
@@ -166,7 +218,13 @@ export function convertExpression(
   }
 
   // Implicit: auto-convert every quantity we can find.
-  const annotations = analyze(expr, { customUnits, mode: 'explicit', precision });
+  const annotations = analyze(expr, {
+    customUnits,
+    currencyUnits,
+    baseCurrency: opts.baseCurrency,
+    mode: 'explicit',
+    precision,
+  });
   if (annotations.length === 0) {
     return {
       lines: [],

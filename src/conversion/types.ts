@@ -9,7 +9,7 @@
  * units live in the same machinery as everything else.
  */
 
-/** Physical dimensions the engine knows how to convert. */
+/** Dimensions the engine knows how to convert. */
 export type DimensionName =
   | 'length'
   | 'mass'
@@ -17,15 +17,19 @@ export type DimensionName =
   | 'volume'
   | 'area'
   | 'speed'
-  | 'pressure';
+  | 'pressure'
+  | 'currency';
 
 /**
  * Which measurement system a unit belongs to.  For auto-conversion the engine
  * treats `metric` as one side and `imperial`/`us` as the other.  `us` exists
  * because US customary volumes (gallon, pint, cup, fluid ounce) differ from
- * the imperial ones; we standardise on US customary for those.
+ * the imperial ones; we standardise on US customary for those. `currency` is a
+ * world of its own — converted to a configurable base, not a metric/imperial
+ * counterpart — and its `toBase` is USD per unit (dynamic for fiat, fixed for
+ * custom currencies).
  */
-export type UnitSystem = 'metric' | 'imperial' | 'us';
+export type UnitSystem = 'metric' | 'imperial' | 'us' | 'currency';
 
 export interface UnitDef {
   /** Canonical identifier, e.g. `meter`. Unique across the registry. */

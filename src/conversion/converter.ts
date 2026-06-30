@@ -104,12 +104,28 @@ export function formatNumber(n: number, precision: number): string {
   return decimalFormatter.format(rounded);
 }
 
-/** Render a quantity for display, e.g. `6.21 mi`, `86°F`, `5 m²`. */
+const moneyFormatter = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  useGrouping: true,
+});
+
+/** Money is always two decimals: `$2.50`, `2.50 CAD`, `1,000,000.00 MESOS`. */
+function formatMoney(value: number, unit: UnitDef): string {
+  if (!Number.isFinite(value)) return `${value} ${unit.symbol}`;
+  const amount = moneyFormatter.format(value);
+  // Sign-style symbols ($, €, ₪) prefix the amount; codes/names follow it.
+  const isSign = !/^[\p{L}]/u.test(unit.symbol);
+  return isSign ? `${unit.symbol}${amount}` : `${amount} ${unit.symbol}`;
+}
+
+/** Render a quantity for display, e.g. `6.21 mi`, `86°F`, `5 m²`, `$2.50`. */
 export function formatQuantity(
   value: number,
   unit: UnitDef,
   precision: number,
 ): string {
+  if (unit.dimension === 'currency') return formatMoney(value, unit);
   const num = formatNumber(value, precision);
   // Degree symbols attach with no space (86°F); everything else gets a space.
   const space = unit.symbol.startsWith('°') ? '' : ' ';

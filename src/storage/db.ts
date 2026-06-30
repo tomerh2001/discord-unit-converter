@@ -40,7 +40,18 @@ export function getDb(): Database.Database {
       auto_detect INTEGER NOT NULL DEFAULT 1,
       precision   INTEGER NOT NULL DEFAULT 2
     );
+
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
+
+  // Migration: add base_currency to existing guild_config tables.
+  const cols = db.prepare(`PRAGMA table_info(guild_config)`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'base_currency')) {
+    db.exec(`ALTER TABLE guild_config ADD COLUMN base_currency TEXT NOT NULL DEFAULT 'USD'`);
+  }
   return db;
 }
 

@@ -3,6 +3,7 @@
  * message text, while doing its best to avoid firing inside code, links, or
  * normal prose.
  */
+import { CURRENCY_SIGNS, MAGNITUDES, MAGNITUDE_TOKENS } from './currencies.js';
 import type { ConversionMode, ParsedQuantity, UnitDef } from './types.js';
 import { AMBIGUOUS_ALIASES, buildAliasIndex } from './units.js';
 
@@ -67,10 +68,85 @@ export interface ParseOptions {
   /** Extra (custom) units to recognise in addition to the built-ins. */
   customUnits?: UnitDef[];
   /**
+   * Currency units (built-in fiat + custom currencies). Only parsed in
+   * `explicit` mode, so the passive scanner never reacts to money.
+   */
+  currencyUnits?: UnitDef[];
+  /**
    * `auto` (passive message scanning) applies the ambiguous-alias guard;
    * `explicit` (the /convert command) accepts everything.
    */
   mode?: ConversionMode;
+}
+
+/**
+ * Currency pass: matches money in many shapes — `$5`, `5$`, `$1.5B`, `5 USD`,
+ * `1B USD`, `1 billion Mesos`, `5 dollars` — applying magnitude multipliers
+ * (k/M/B/T, "million", "bil", …). Pushes matches and returns `work` with the
+ * consumed spans blanked. Only the built-in `NUMBER` is reused; currency
+ * indicators (sign or code/name) are required, so plain `1M` never matches.
+ */
+function parseCurrencies(
+  work: string,
+  text: string,
+  currencyUnits: UnitDef[],
+  results: ParsedQuantity[],
+): string {
+  const aliasToUnit = new Map<string, UnitDef>();
+  const codeNames: string[] = [];
+  for (const unit of currencyUnits) {
+    for (const alias of unit.aliases) {
+      const key = alias.toLowerCase();
+      if (!aliasToUnit.has(key)) aliasToUnit.set(key, unit);
+      if (/^[\p{L}][\p{L} ]*$/u.test(alias)) codeNames.push(key);
+    }
+  }
+  const signChars = CURRENCY_SIGNS.filter((s) => aliasToUnit.has(s.toLowerCase()));
+  const magAlt = MAGNITUDE_TOKENS.join('|');
+  const magOf = (token: string | undefined): number =>
+    token ? (MAGNITUDES[token.toLowerCase()] ?? 1) : 1;
+
+  const consume = (m: RegExpMatchArray, value: number, unit: UnitDef | undefined): void => {
+    if (!unit || !Number.isFinite(value)) return;
+    const start = m.index!;
+    const end = start + m[0].length;
+    results.push({ start, end, raw: text.slice(start, end), value, unit });
+    work = work.slice(0, start) + ' '.repeat(end - start) + work.slice(end);
+  };
+
+  if (signChars.length > 0) {
+    const cls = signChars.map((s) => (s === '$' ? '\\$' : s)).join('');
+    const prefix = new RegExp(
+      `(?<![\\p{L}\\p{N}])([${cls}])\\s?(${NUMBER})\\s?(${magAlt})?(?![\\p{L}\\p{N}])`,
+      'giu',
+    );
+    for (const m of [...work.matchAll(prefix)]) {
+      consume(m, parseFloat(m[2]!.replace(/,/g, '')) * magOf(m[3]), aliasToUnit.get(m[1]!.toLowerCase()));
+    }
+    const suffix = new RegExp(
+      `(?<![\\p{L}\\p{N}])(${NUMBER})\\s?(${magAlt})?\\s?([${cls}])(?![\\p{L}\\p{N}])`,
+      'giu',
+    );
+    for (const m of [...work.matchAll(suffix)]) {
+      consume(m, parseFloat(m[1]!.replace(/,/g, '')) * magOf(m[2]), aliasToUnit.get(m[3]!.toLowerCase()));
+    }
+  }
+
+  if (codeNames.length > 0) {
+    const codeAlt = [...new Set(codeNames)]
+      .sort((a, b) => b.length - a.length)
+      .map(escapeRegex)
+      .join('|');
+    const code = new RegExp(
+      `(?<![\\p{L}\\p{N}.])(${NUMBER})\\s?(${magAlt})?\\s?(${codeAlt})(?![\\p{L}])`,
+      'giu',
+    );
+    for (const m of [...work.matchAll(code)]) {
+      consume(m, parseFloat(m[1]!.replace(/,/g, '')) * magOf(m[2]), aliasToUnit.get(m[3]!.toLowerCase()));
+    }
+  }
+
+  return work;
 }
 
 /**
@@ -86,6 +162,11 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
 
   let work = normalizeQuotes(maskNoise(text));
   const results: ParsedQuantity[] = [];
+
+  // ── Pass 0: currencies (explicit mode only) ──────────────────────────
+  if (mode === 'explicit' && opts.currencyUnits && opts.currencyUnits.length > 0) {
+    work = parseCurrencies(work, text, opts.currencyUnits, results);
+  }
 
   // ── Pass 1: feet + inches compounds ──────────────────────────────────
   if (inch) {

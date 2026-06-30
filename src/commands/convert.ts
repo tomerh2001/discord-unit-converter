@@ -1,7 +1,6 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { loadConfig } from '../config.js';
 import { convertExpression } from '../conversion/index.js';
-import { getCustomUnits, getGuildConfig } from '../storage/customUnits.js';
+import { guildUnitContext } from './context.js';
 import { truncateForDiscord, type Command } from './types.js';
 
 export const convertCommand: Command = {
@@ -11,19 +10,22 @@ export const convertCommand: Command = {
     .addStringOption((o) =>
       o
         .setName('expression')
-        .setDescription('What to convert — a value with a unit, optionally "... to <unit>"')
+        .setDescription('e.g. "10 km to miles", "72f", "1.5B USD", "$50 to EUR"')
         .setRequired(true),
     ),
 
   async execute(interaction) {
     const expression = interaction.options.getString('expression', true);
-    const guildId = interaction.guildId;
-    const customUnits = guildId ? getCustomUnits(guildId) : [];
-    const precision = guildId
-      ? getGuildConfig(guildId).precision
-      : loadConfig().defaultPrecision;
+    const { customUnits, currencyUnits, precision, baseCurrency } = guildUnitContext(
+      interaction.guildId,
+    );
 
-    const { lines, error } = convertExpression(expression, { customUnits, precision });
+    const { lines, error } = convertExpression(expression, {
+      customUnits,
+      currencyUnits,
+      baseCurrency,
+      precision,
+    });
 
     if (error) {
       await interaction.reply({ content: `⚠️ ${error}`, flags: MessageFlags.Ephemeral });

@@ -100,18 +100,26 @@ export function removeCustomUnit(guildId: string, name: string): boolean {
 export interface GuildConfig {
   autoDetect: boolean;
   precision: number;
+  /** Target currency code for money conversions, e.g. `USD`. */
+  baseCurrency: string;
 }
 
 /** Read a guild's config, falling back to environment defaults. */
 export function getGuildConfig(guildId: string): GuildConfig {
   const { autoDetectDefault, defaultPrecision } = loadConfig();
   const row = getDb()
-    .prepare('SELECT auto_detect, precision FROM guild_config WHERE guild_id = ?')
-    .get(guildId) as { auto_detect: number; precision: number } | undefined;
+    .prepare('SELECT auto_detect, precision, base_currency FROM guild_config WHERE guild_id = ?')
+    .get(guildId) as
+    | { auto_detect: number; precision: number; base_currency: string }
+    | undefined;
   if (!row) {
-    return { autoDetect: autoDetectDefault, precision: defaultPrecision };
+    return { autoDetect: autoDetectDefault, precision: defaultPrecision, baseCurrency: 'USD' };
   }
-  return { autoDetect: row.auto_detect === 1, precision: row.precision };
+  return {
+    autoDetect: row.auto_detect === 1,
+    precision: row.precision,
+    baseCurrency: row.base_currency || 'USD',
+  };
 }
 
 function upsertConfig(guildId: string, patch: Partial<GuildConfig>): void {
@@ -119,11 +127,14 @@ function upsertConfig(guildId: string, patch: Partial<GuildConfig>): void {
   const next = { ...current, ...patch };
   getDb()
     .prepare(
-      `INSERT INTO guild_config (guild_id, auto_detect, precision)
-       VALUES (?, ?, ?)
-       ON CONFLICT(guild_id) DO UPDATE SET auto_detect=excluded.auto_detect, precision=excluded.precision`,
+      `INSERT INTO guild_config (guild_id, auto_detect, precision, base_currency)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(guild_id) DO UPDATE SET
+         auto_detect=excluded.auto_detect,
+         precision=excluded.precision,
+         base_currency=excluded.base_currency`,
     )
-    .run(guildId, next.autoDetect ? 1 : 0, next.precision);
+    .run(guildId, next.autoDetect ? 1 : 0, next.precision, next.baseCurrency);
 }
 
 export function setAutoDetect(guildId: string, enabled: boolean): void {
@@ -132,4 +143,8 @@ export function setAutoDetect(guildId: string, enabled: boolean): void {
 
 export function setPrecision(guildId: string, precision: number): void {
   upsertConfig(guildId, { precision });
+}
+
+export function setBaseCurrency(guildId: string, code: string): void {
+  upsertConfig(guildId, { baseCurrency: code.toUpperCase() });
 }

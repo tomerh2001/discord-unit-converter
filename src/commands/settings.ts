@@ -4,12 +4,16 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from 'discord.js';
+import { CURRENCIES } from '../conversion/index.js';
 import {
   getGuildConfig,
   setAutoDetect,
+  setBaseCurrency,
   setPrecision,
 } from '../storage/customUnits.js';
 import type { Command } from './types.js';
+
+const CURRENCY_CODES = new Set(CURRENCIES.map((c) => c.code));
 
 export const settingsCommand: Command = {
   data: new SlashCommandBuilder()
@@ -30,6 +34,14 @@ export const settingsCommand: Command = {
           o.setName('digits').setDescription('0–6 decimal places').setRequired(true).setMinValue(0).setMaxValue(6),
         ),
     )
+    .addSubcommand((sub) =>
+      sub
+        .setName('basecurrency')
+        .setDescription('Currency that money converts into by default')
+        .addStringOption((o) =>
+          o.setName('code').setDescription('Currency code, e.g. USD, EUR, ILS').setRequired(true),
+        ),
+    )
     .addSubcommand((sub) => sub.setName('view').setDescription('Show the current settings')),
 
   async execute(interaction) {
@@ -39,7 +51,7 @@ export const settingsCommand: Command = {
     if (sub === 'view') {
       const cfg = getGuildConfig(guildId);
       await interaction.reply({
-        content: `**Auto-detect:** ${cfg.autoDetect ? 'on' : 'off'}\n**Precision:** ${cfg.precision} decimal places`,
+        content: `**Auto-detect:** ${cfg.autoDetect ? 'on' : 'off'}\n**Precision:** ${cfg.precision} decimal places\n**Base currency:** ${cfg.baseCurrency}`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -66,6 +78,20 @@ export const settingsCommand: Command = {
       const digits = interaction.options.getInteger('digits', true);
       setPrecision(guildId, digits);
       await interaction.reply({ content: `✅ Conversions will now show **${digits}** decimal places.` });
+      return;
+    }
+
+    if (sub === 'basecurrency') {
+      const code = interaction.options.getString('code', true).trim().toUpperCase();
+      if (!CURRENCY_CODES.has(code)) {
+        await interaction.reply({
+          content: `⚠️ "${code}" isn't a supported currency. Try one of: ${[...CURRENCY_CODES].join(', ')}.`,
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      setBaseCurrency(guildId, code);
+      await interaction.reply({ content: `✅ Money will now convert into **${code}** by default.` });
     }
   },
 };
