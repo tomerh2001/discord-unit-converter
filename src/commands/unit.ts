@@ -1,4 +1,5 @@
 import {
+  ApplicationIntegrationType,
   InteractionContextType,
   MessageFlags,
   PermissionFlagsBits,
@@ -34,6 +35,7 @@ export const unitCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('unit')
     .setDescription('Manage custom units & currencies for this server')
+    .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
     .setContexts(InteractionContextType.Guild)
     .addSubcommand((sub) =>
       sub

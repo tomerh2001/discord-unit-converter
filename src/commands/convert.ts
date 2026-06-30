@@ -1,4 +1,9 @@
-import { MessageFlags, SlashCommandBuilder } from 'discord.js';
+import {
+  ApplicationIntegrationType,
+  InteractionContextType,
+  MessageFlags,
+  SlashCommandBuilder,
+} from 'discord.js';
 import { convertExpression } from '../conversion/index.js';
 import { guildUnitContext } from './context.js';
 import { truncateForDiscord, type Command } from './types.js';
@@ -7,6 +12,17 @@ export const convertCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('convert')
     .setDescription('Convert units, e.g. "10 km to miles", "72f", or "5\'11\\""')
+    // Usable whether the app is installed to a server OR to your account, and
+    // in guilds, the bot's DMs, and other private channels.
+    .setIntegrationTypes(
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall,
+    )
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel,
+    )
     .addStringOption((o) =>
       o
         .setName('expression')

@@ -1,4 +1,5 @@
 import {
+  ApplicationIntegrationType,
   InteractionContextType,
   MessageFlags,
   PermissionFlagsBits,
@@ -19,6 +20,7 @@ export const settingsCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('settings')
     .setDescription('Configure unit auto-detection for this server')
+    .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
     .setContexts(InteractionContextType.Guild)
     .addSubcommand((sub) =>
       sub

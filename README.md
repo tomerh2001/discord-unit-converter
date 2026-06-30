@@ -52,6 +52,19 @@ The `permissions` value grants **View Channels**, **Send Messages**, and **Read 
 
 > You can also build this URL in the Developer Portal under **OAuth2 → URL Generator** (scopes: `bot` + `applications.commands`).
 
+#### Or install it to your account (use it anywhere)
+
+`/convert` and the **Convert Units** message command are **user-installable** — add
+the app to your account once and use them in *any* server or DM, even where the bot
+isn't a member:
+
+```
+https://discord.com/oauth2/authorize?client_id=CLIENT_ID&integration_type=1&scope=applications.commands
+```
+
+(`/unit` and `/settings` manage per-server config, so they stay server-install only.)
+`npm run deploy` enables both install contexts and registers the commands globally.
+
 ### 3. Configure & run
 
 ```bash

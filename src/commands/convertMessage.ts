@@ -1,6 +1,8 @@
 import {
   ApplicationCommandType,
+  ApplicationIntegrationType,
   ContextMenuCommandBuilder,
+  InteractionContextType,
   MessageFlags,
 } from 'discord.js';
 import { convertMessageContent } from '../conversion/index.js';
@@ -22,7 +24,17 @@ import { truncateForDiscord, type MessageCommand } from './types.js';
 export const convertMessageCommand: MessageCommand = {
   data: new ContextMenuCommandBuilder()
     .setName('Convert Units')
-    .setType(ApplicationCommandType.Message),
+    .setType(ApplicationCommandType.Message)
+    // Works from a server install OR a personal (user) install, anywhere.
+    .setIntegrationTypes(
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall,
+    )
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel,
+    ),
 
   async execute(interaction) {
     const content = interaction.targetMessage.content ?? '';
