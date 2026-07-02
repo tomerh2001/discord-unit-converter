@@ -1,0 +1,17 @@
+# Server deployment — pulls the pre-built image from GHCR (no cloning/building).
+#
+# On your server:
+#   1. Put this file and a `.env` (with DISCORD_TOKEN + CLIENT_ID) in a directory.
+#   2. docker compose pull && docker compose up -d
+#
+# The image is built and published automatically by GitHub Actions on every push
+# to main. Update with:  docker compose pull && docker compose up -d
+services:
+  bot:
+    image: ghcr.io/tomerh2001/discord-unit-converter:latest
+    container_name: discord-unit-converter
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      # Persists the SQLite DB (custom units, per-server config, cached rates).
+      - ./data:/app/data

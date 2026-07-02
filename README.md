@@ -91,13 +91,37 @@ npm start
 
 ## 🐳 Run with Docker
 
+### From the published image (recommended — no cloning/building)
+
+Every push to `main` builds a multi-arch image (amd64 + arm64) and publishes it to
+**GHCR** via GitHub Actions. On your server you only need a compose file and a `.env`:
+
+```bash
+mkdir discord-unit-converter && cd discord-unit-converter
+curl -O https://raw.githubusercontent.com/tomerh2001/discord-unit-converter/main/deploy/compose.yml
+curl -o .env https://raw.githubusercontent.com/tomerh2001/discord-unit-converter/main/deploy/.env.example
+# edit .env — set DISCORD_TOKEN (CLIENT_ID is already filled in)
+docker compose pull && docker compose up -d
+docker compose logs -f    # look for: ✅ Logged in as …
+```
+
+Update later with `docker compose pull && docker compose up -d`. The image lives at
+`ghcr.io/tomerh2001/discord-unit-converter:latest`.
+
+> The GHCR package is private by default — make it **public** once (repo → Packages
+> → the package → *Package settings* → *Change visibility*) so the server can pull
+> without logging in, or `docker login ghcr.io` with a `read:packages` token.
+
+### Build locally instead
+
 ```bash
 cp .env.example .env       # fill it in
 docker compose up -d --build
 ```
 
 The SQLite database (custom units & per-server settings) is persisted to `./data`
-via a mounted volume. Run `npm run deploy` once locally (or `docker compose run --rm bot node dist/discord/deploy-commands.js`) to register the commands.
+via a mounted volume. Commands are registered globally by `npm run deploy`, which
+you only need to re-run when the commands themselves change.
 
 ---
 
