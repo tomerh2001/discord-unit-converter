@@ -5,7 +5,7 @@ import {
   InteractionContextType,
   MessageFlags,
 } from 'discord.js';
-import { convertMessageContent } from '../conversion/index.js';
+import { convertExplicit, convertMessageContent } from '../conversion/index.js';
 import { guildUnitContext } from './context.js';
 import { truncateForDiscord, type MessageCommand } from './types.js';
 
@@ -41,6 +41,18 @@ export const convertMessageCommand: MessageCommand = {
     const { customUnits, currencyUnits, precision, baseCurrency } = guildUnitContext(
       interaction.guildId,
     );
+
+    // If the message is an explicit "<quantity> to <known unit>" (e.g. "25$ to
+    // mesos"), do that conversion. Unknown targets fall through so ordinary
+    // prose ("10 km to the store") is rendered inline instead.
+    const explicit = convertExplicit(content, { customUnits, currencyUnits, precision });
+    if (explicit && explicit.lines.length > 0) {
+      await interaction.reply({
+        content: truncateForDiscord(explicit.lines.join('\n')),
+        allowedMentions: { parse: [] },
+      });
+      return;
+    }
 
     const { annotations, reply } = convertMessageContent(content, {
       customUnits,

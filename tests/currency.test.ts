@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   convertExpression,
+  convertExplicit,
   defineCustomUnit,
   getCurrencyUnits,
   parseMagnitudeNumber,
@@ -129,5 +130,23 @@ describe('custom currency (Mesos)', () => {
     expect(convertExpression('10 mesos', { currencyUnits: cu, baseCurrency: 'USD' }).lines).toEqual([
       '10.00 Mz = **$0.000000025**',
     ]);
+  });
+
+  it('right-click "25$ to mesos" converts to the explicit target', () => {
+    const cu = [...currencyUnits(), mesos()];
+    // $25 / 2.5e-9 = 1e10 = 10B mesos.
+    expect(convertExplicit('25$ to mesos', { currencyUnits: cu })?.lines).toEqual(['$25.00 = **10B Mz**']);
+  });
+});
+
+describe('convertExplicit — right-click target detection', () => {
+  it('returns null for prose with an unresolvable target (renders inline instead)', () => {
+    expect(convertExplicit('10 km to the store', {})).toBeNull();
+  });
+  it('returns null when there is no "to/in <unit>" target', () => {
+    expect(convertExplicit('it costs 2.5B mesos', {})).toBeNull();
+  });
+  it('handles physical explicit targets too', () => {
+    expect(convertExplicit('10 km to miles', {})?.lines).toEqual(['10 km = **6.21 mi**']);
   });
 });

@@ -7,7 +7,7 @@ import { BASE_CURRENCY } from './currencies.js';
 import { convertAuto, convertTo, formatQuantity } from './converter.js';
 import { parseQuantities } from './parser.js';
 import { resolveUnitStrict } from './resolve.js';
-import type { Annotation, ConversionMode, UnitDef } from './types.js';
+import type { Annotation, ConversionMode, ParsedQuantity, UnitDef } from './types.js';
 
 export * from './types.js';
 export { UNITS, CONVERTIBLE_DIMENSIONS } from './units.js';
@@ -167,6 +167,54 @@ export interface ExpressionResult {
   error?: string;
 }
 
+/** Render `<source> = **<target>**` lines for an explicit conversion. */
+function explicitLines(quantities: ParsedQuantity[], target: UnitDef, precision: number): string[] {
+  return quantities.map((q) => {
+    if (q.unit.dimension !== target.dimension) {
+      return `❌ ${formatQuantity(q.value, q.unit, precision)} → ${target.symbol}: incompatible (${q.unit.dimension} vs ${target.dimension}).`;
+    }
+    const result = convertTo(q.value, q.unit, target, precision);
+    return `${formatQuantity(q.value, q.unit, precision)} = **${result.display}**`;
+  });
+}
+
+/**
+ * If `text` is an explicit "<quantity> to <known unit>" conversion, return the
+ * rendered lines; otherwise null. Unlike convertExpression, an UNKNOWN target
+ * yields null (not an error) so callers can fall back to inline rendering —
+ * right-clicking "10 km to the store" should render the km, not complain about
+ * "the store".
+ */
+export function convertExplicit(
+  text: string,
+  opts: { customUnits?: UnitDef[]; currencyUnits?: UnitDef[]; precision?: number } = {},
+): ExpressionResult | null {
+  const customUnits = opts.customUnits ?? [];
+  const currencyUnits = opts.currencyUnits ?? [];
+  const precision = opts.precision ?? 2;
+  const expr = text.trim();
+
+  let lastSplit: RegExpMatchArray | null = null;
+  for (const m of expr.matchAll(SPLIT_KEYWORD)) lastSplit = m;
+  if (!lastSplit) return null;
+
+  const target = resolveUnit(expr.slice(lastSplit.index! + lastSplit[0].length).trim(), [
+    ...customUnits,
+    ...currencyUnits,
+  ]);
+  if (!target) return null; // unknown target → treat as prose, not a conversion
+
+  const quantities = parseQuantities(expr.slice(0, lastSplit.index!), {
+    customUnits,
+    currencyUnits,
+    mode: 'explicit',
+    preferCurrency: target.dimension === 'currency',
+  });
+  if (quantities.length === 0) return null;
+
+  return { lines: explicitLines(quantities, target, precision) };
+}
+
 /**
  * Evaluate a free-form `/convert` expression. Supports an explicit target
  * (`10 km to miles`) or implicit auto-conversion of every quantity found
@@ -206,14 +254,7 @@ export function convertExpression(
     });
 
     if (target && quantities.length > 0) {
-      const lines = quantities.map((q) => {
-        if (q.unit.dimension !== target.dimension) {
-          return `❌ ${formatQuantity(q.value, q.unit, precision)} → ${target.symbol}: incompatible (${q.unit.dimension} vs ${target.dimension}).`;
-        }
-        const result = convertTo(q.value, q.unit, target, precision);
-        return `${formatQuantity(q.value, q.unit, precision)} = **${result.display}**`;
-      });
-      return { lines };
+      return { lines: explicitLines(quantities, target, precision) };
     }
 
     // The user clearly named a target but we don't know it — say so rather than
