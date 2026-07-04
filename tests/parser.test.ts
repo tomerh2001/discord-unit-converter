@@ -5,11 +5,21 @@ const ids = (text: string, mode: 'auto' | 'explicit' = 'auto') =>
   parseQuantities(text, { mode }).map((q) => ({ id: q.unit.id, value: q.value }));
 
 describe('parseQuantities — formats', () => {
-  it('matches the same unit across casing and spacing', () => {
-    for (const text of ['1M', '1m', '1 Meter', '1 meter', '1meters', '1 metres']) {
-      const out = ids(text);
-      expect(out, text).toEqual([{ id: 'meter', value: 1 }]);
+  it('matches meter by full name and spaced abbreviation (auto mode)', () => {
+    for (const text of ['1 m', '1 Meter', '1 meter', '1meters', '1 metres']) {
+      expect(ids(text), text).toEqual([{ id: 'meter', value: 1 }]);
     }
+  });
+
+  it('does not auto-convert bare "Nm"/"Nt" — they read as magnitudes (million/trillion)', () => {
+    expect(ids('sold a clean et for 500m instead of 5b')).toEqual([]);
+    expect(ids('1m')).toEqual([]);
+    expect(ids('5t')).toEqual([]);
+  });
+
+  it('still converts "1M"/"500m" in explicit mode (/convert)', () => {
+    expect(ids('1M', 'explicit')).toEqual([{ id: 'meter', value: 1 }]);
+    expect(ids('500m', 'explicit')).toEqual([{ id: 'meter', value: 500 }]);
   });
 
   it('parses decimals, signs and thousands separators', () => {

@@ -24,6 +24,15 @@ import type { DimensionName, UnitDef, UnitSystem } from './types.js';
  */
 export const AMBIGUOUS_ALIASES = new Set(['in', 'c', 'f']);
 
+/**
+ * Single-letter unit aliases that also read as magnitude suffixes in casual /
+ * gaming chat (m = million, t = trillion). Attached to a number in passive mode
+ * ("500m", "5t") they are skipped, because "500m" almost always means 500
+ * million — not 500 metres. Spaced ("500 m") and the explicit /convert command
+ * still treat them as units.
+ */
+export const MAGNITUDE_UNIT_ALIASES = new Set(['m', 't']);
+
 interface RawUnit extends Omit<UnitDef, 'offset'> {
   offset?: number;
   /** Excluded from being *chosen* as an automatic target (still parseable). */

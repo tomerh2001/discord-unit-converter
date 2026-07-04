@@ -5,7 +5,7 @@
  */
 import { CURRENCY_SIGNS, MAGNITUDES, MAGNITUDE_TOKENS } from './currencies.js';
 import type { ConversionMode, ParsedQuantity, UnitDef } from './types.js';
-import { AMBIGUOUS_ALIASES, buildAliasIndex } from './units.js';
+import { AMBIGUOUS_ALIASES, buildAliasIndex, MAGNITUDE_UNIT_ALIASES } from './units.js';
 
 /** Numeric literal: optional sign, optional thousands grouping, optional decimal. */
 const NUMBER = String.raw`[-+]?(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\.\d+)`;
@@ -228,6 +228,12 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
     // Ambiguous bare tokens (`in`, `c`, `f`) only count when attached to the
     // number, and only in auto mode — keeps normal prose from converting.
     if (mode === 'auto' && AMBIGUOUS_ALIASES.has(aliasKey) && gap.length > 0) {
+      continue;
+    }
+
+    // Magnitude-suffix letters (`m`, `t`) attached to a number are skipped in
+    // auto mode — "500m" reads as 500 million, not 500 metres.
+    if (mode === 'auto' && MAGNITUDE_UNIT_ALIASES.has(aliasKey) && gap.length === 0) {
       continue;
     }
 
