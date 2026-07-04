@@ -28,7 +28,7 @@ export interface CurrencyMeta {
 export const CURRENCIES: CurrencyMeta[] = [
   { code: 'USD', sign: '$', names: ['dollar', 'dollars', 'usd'] },
   { code: 'EUR', sign: '€', names: ['euro', 'euros'] },
-  { code: 'GBP', sign: '£', names: ['gbp', 'quid', 'sterling'] },
+  { code: 'GBP', sign: '£', names: ['gbp', 'quid', 'sterling', 'pound', 'pounds'] },
   { code: 'JPY', sign: '¥', names: ['yen', 'jpy'] },
   { code: 'ILS', sign: '₪', names: ['shekel', 'shekels', 'nis', 'ils'] },
   { code: 'INR', sign: '₹', names: ['rupee', 'rupees', 'inr'] },

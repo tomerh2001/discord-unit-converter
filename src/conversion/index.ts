@@ -196,7 +196,14 @@ export function convertExpression(
     const left = expr.slice(0, lastSplit.index!);
     const targetName = expr.slice(lastSplit.index! + lastSplit[0].length).trim();
     const target = resolveUnit(targetName, resolveExtra);
-    const quantities = parseQuantities(left, { customUnits, currencyUnits, mode: 'explicit' });
+    // "5 pounds to usd" → treat pounds as GBP; "5 pounds to kg" → mass.
+    const preferCurrency = target?.dimension === 'currency';
+    const quantities = parseQuantities(left, {
+      customUnits,
+      currencyUnits,
+      mode: 'explicit',
+      preferCurrency,
+    });
 
     if (target && quantities.length > 0) {
       const lines = quantities.map((q) => {

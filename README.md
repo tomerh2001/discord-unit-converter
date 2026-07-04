@@ -167,6 +167,15 @@ Rates are pulled live (25+ currencies) and refreshed periodically. Each server h
 a **base currency** (default USD) that amounts convert into — change it with
 `/settings basecurrency code: EUR`.
 
+Large amounts are shown compactly (`400B Mz`, not `400,000,000,000.00`), and
+sub-cent amounts keep significant figures (`$0.000000025`, not `$0.00`).
+
+> "pound" resolves to **GBP** when the target is a currency (`5 pounds to usd`),
+> but stays **weight** otherwise (`5 pounds to kg`). Ambiguous currency names in
+> general only win when you're explicitly converting to a currency.
+
+Run **`/unit list_all`** to see every built-in unit and currency the bot supports.
+
 ### Right-click a message → Convert Units
 
 Right-click (desktop) or long-press (mobile) any message → **Apps → Convert Units**.

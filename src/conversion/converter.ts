@@ -109,11 +109,30 @@ const moneyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
   useGrouping: true,
 });
+// Large amounts get a magnitude suffix: 454,545,454,545 → 454.55B.
+const compactMoneyFormatter = new Intl.NumberFormat('en-US', {
+  notation: 'compact',
+  maximumFractionDigits: 2,
+});
+// Sub-cent amounts keep significant figures instead of collapsing to 0.00.
+const tinyMoneyFormatter = new Intl.NumberFormat('en-US', {
+  maximumSignificantDigits: 2,
+});
 
-/** Money is always two decimals: `$2.50`, `2.50 CAD`, `1,000,000.00 MESOS`. */
+/** Format the numeric part of a money amount across small/normal/large ranges. */
+function formatMoneyAmount(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  const abs = Math.abs(value);
+  if (abs === 0) return '0.00';
+  if (abs >= 1e6) return compactMoneyFormatter.format(value); // 454.55B, 2.6M
+  if (abs < 0.005) return tinyMoneyFormatter.format(value); // 0.000000025 (not 0.00)
+  return moneyFormatter.format(value); // 1,000.00
+}
+
+/** Money display: `$2.50`, `2.50 CAD`, `454.55B Mz`, `$0.000000025`. */
 function formatMoney(value: number, unit: UnitDef): string {
   if (!Number.isFinite(value)) return `${value} ${unit.symbol}`;
-  const amount = moneyFormatter.format(value);
+  const amount = formatMoneyAmount(value);
   // Sign-style symbols ($, €, ₪) prefix the amount; codes/names follow it.
   const isSign = !/^[\p{L}]/u.test(unit.symbol);
   return isSign ? `${unit.symbol}${amount}` : `${amount} ${unit.symbol}`;

@@ -15,6 +15,14 @@ function escapeRegex(s: string): string {
 }
 
 /**
+ * Built-in physical unit aliases. A currency *name* that collides with one of
+ * these (e.g. "pound", which is both GBP and the mass unit) is only treated as
+ * a currency when the caller explicitly prefers currency (an explicit currency
+ * target), so "5 pounds to kg" stays mass while "5 pounds to usd" is GBP.
+ */
+const BUILTIN_PHYSICAL_ALIASES = new Set(buildAliasIndex().keys());
+
+/**
  * Replace a region with same-length spaces so later regexes ignore it while
  * every surviving character keeps its original index.
  */
@@ -73,6 +81,11 @@ export interface ParseOptions {
    */
   currencyUnits?: UnitDef[];
   /**
+   * When true, currency names that collide with a physical unit (e.g. "pound")
+   * are read as currency. Set by /convert when the target is a currency.
+   */
+  preferCurrency?: boolean;
+  /**
    * `auto` (passive message scanning) applies the ambiguous-alias guard;
    * `explicit` (the /convert command) accepts everything.
    */
@@ -91,6 +104,7 @@ function parseCurrencies(
   text: string,
   currencyUnits: UnitDef[],
   results: ParsedQuantity[],
+  preferCurrency: boolean,
 ): string {
   const aliasToUnit = new Map<string, UnitDef>();
   const codeNames: string[] = [];
@@ -98,7 +112,10 @@ function parseCurrencies(
     for (const alias of unit.aliases) {
       const key = alias.toLowerCase();
       if (!aliasToUnit.has(key)) aliasToUnit.set(key, unit);
-      if (/^[\p{L}][\p{L} ]*$/u.test(alias)) codeNames.push(key);
+      if (!/^[\p{L}][\p{L} ]*$/u.test(alias)) continue;
+      // Skip names that collide with a physical unit unless we prefer currency.
+      if (!preferCurrency && BUILTIN_PHYSICAL_ALIASES.has(key)) continue;
+      codeNames.push(key);
     }
   }
   const signChars = CURRENCY_SIGNS.filter((s) => aliasToUnit.has(s.toLowerCase()));
@@ -165,7 +182,7 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
 
   // ── Pass 0: currencies (explicit mode only) ──────────────────────────
   if (mode === 'explicit' && opts.currencyUnits && opts.currencyUnits.length > 0) {
-    work = parseCurrencies(work, text, opts.currencyUnits, results);
+    work = parseCurrencies(work, text, opts.currencyUnits, results, opts.preferCurrency ?? false);
   }
 
   // ── Pass 1: feet + inches compounds ──────────────────────────────────

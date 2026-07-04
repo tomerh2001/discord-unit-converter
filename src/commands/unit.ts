@@ -1,17 +1,20 @@
 import {
   ApplicationIntegrationType,
+  EmbedBuilder,
   InteractionContextType,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from 'discord.js';
 import {
+  CURRENCIES,
   CustomUnitError,
   defineCustomUnit,
   formatQuantity,
   parseMagnitudeNumber,
   parseQuantities,
   resolveUnit,
+  UNITS,
 } from '../conversion/index.js';
 import {
   countCustomUnits,
@@ -26,6 +29,34 @@ import { DIMENSION_BASE_SYMBOL, truncateForDiscord, type Command } from './types
 const MAX_CUSTOM_UNITS = 100;
 
 const groupFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 });
+
+const DIMENSION_ORDER: { key: string; label: string }[] = [
+  { key: 'length', label: 'Length' },
+  { key: 'mass', label: 'Mass' },
+  { key: 'temperature', label: 'Temperature' },
+  { key: 'volume', label: 'Volume' },
+  { key: 'area', label: 'Area' },
+  { key: 'speed', label: 'Speed' },
+  { key: 'pressure', label: 'Pressure' },
+];
+
+function buildSupportedEmbed(): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle('📏 Supported units')
+    .setColor(0x5865f2)
+    .setDescription(
+      'Everything I can convert. I also understand full names and plurals ' +
+        '(e.g. `meter`, `meters`) and many currency formats (`$5`, `1B USD`, `5 dollars`). ' +
+        'Use `/unit list` for this server’s custom units.',
+    );
+  for (const { key, label } of DIMENSION_ORDER) {
+    const symbols = UNITS.filter((u) => u.dimension === key).map((u) => u.symbol);
+    if (symbols.length > 0) embed.addFields({ name: label, value: symbols.join(', ') });
+  }
+  const currencies = CURRENCIES.map((c) => (c.sign ? `${c.code} (${c.sign})` : c.code)).join(', ');
+  embed.addFields({ name: 'Currency — live rates', value: currencies });
+  return embed;
+}
 
 function canManage(interaction: Parameters<Command['execute']>[0]): boolean {
   return interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
@@ -63,11 +94,19 @@ export const unitCommand: Command = {
         .setDescription('Delete a custom unit')
         .addStringOption((o) => o.setName('name').setDescription('Name of the unit to remove').setRequired(true)),
     )
-    .addSubcommand((sub) => sub.setName('list').setDescription('List this server’s custom units')),
+    .addSubcommand((sub) => sub.setName('list').setDescription('List this server’s custom units'))
+    .addSubcommand((sub) =>
+      sub.setName('list_all').setDescription('Show every built-in unit and currency I support'),
+    ),
 
   async execute(interaction) {
     const guildId = interaction.guildId!;
     const sub = interaction.options.getSubcommand();
+
+    if (sub === 'list_all') {
+      await interaction.reply({ embeds: [buildSupportedEmbed()], flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     if (sub === 'list') {
       const units = getCustomUnits(guildId);
