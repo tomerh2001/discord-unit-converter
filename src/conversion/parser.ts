@@ -35,7 +35,12 @@ function maskNoise(text: string): string {
   let out = text;
   out = blankRanges(out, /```[\s\S]*?```/g); // fenced code
   out = blankRanges(out, /`[^`]*`/g); // inline code
-  out = blankRanges(out, /https?:\/\/\S+/gi); // urls
+  out = blankRanges(out, /https?:\/\/\S+/gi); // scheme urls
+  out = blankRanges(out, /\bwww\.\S+/gi); // www.… urls
+  // Scheme-less URLs like `docs.google.com/document/d/1L_…` — a domain + TLD
+  // followed by a path. The "/path" is required so plain words ("Node.js") and
+  // decimals ("3.14") aren't masked.
+  out = blankRanges(out, /\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/\S*/gi);
   out = blankRanges(out, /<[^>\n]{1,100}>/g); // mentions, emoji, timestamps
   return out;
 }
@@ -211,9 +216,11 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
   // ── Pass 2: generic <number><unit> ───────────────────────────────────
   const alt = aliasAlternation(index, customUnits.length > 0);
   const generic = new RegExp(
-    // The comma in the lookbehind stops a malformed group like `12,34` from
-    // re-matching its trailing fragment (`34`) as a fresh number.
-    `(?<![\\p{L}\\p{N}.,])(${NUMBER})(\\s*)(${alt})(?![\\p{L}])`,
+    // Lookbehind: `.`/`,` stop a malformed group (`12,34`) re-matching its tail;
+    // `_` stops matching inside identifiers (`abc_5kg`).
+    // Lookahead: a unit can't be followed by a letter, digit, or `_`, so `1L`
+    // inside `1L_tlQ5` (a doc id) or `1L2` isn't a match.
+    `(?<![\\p{L}\\p{N}._,])(${NUMBER})(\\s*)(${alt})(?![\\p{L}\\p{N}_])`,
     'giu',
   );
 

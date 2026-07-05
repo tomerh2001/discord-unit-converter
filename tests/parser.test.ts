@@ -73,6 +73,18 @@ describe('parseQuantities — false-positive avoidance', () => {
     expect(ids('see https://example.com/10km here')).toEqual([]);
   });
 
+  it('ignores units inside scheme-less URLs and identifiers', () => {
+    expect(ids('docs.google.com/document/d/1L_tlQ5Pt4M4/preview?tab=t.0')).toEqual([]);
+    expect(ids('see google.com/a/5kg/b here')).toEqual([]);
+    expect(ids('id 1L_tlQ5')).toEqual([]);
+    expect(ids('order 5kg2 widgets')).toEqual([]);
+  });
+
+  it('still converts real quantities next to punctuation', () => {
+    expect(ids('1L of water')).toEqual([{ id: 'liter', value: 1 }]);
+    expect(ids('5 kg please')).toEqual([{ id: 'kilogram', value: 5 }]);
+  });
+
   it('does not treat bare "in" in prose as inches (auto mode)', () => {
     expect(ids('I will be back in 5')).toEqual([]);
     expect(ids('I have 5 in my pocket')).toEqual([]);
