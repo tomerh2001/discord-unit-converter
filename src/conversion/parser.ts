@@ -22,6 +22,20 @@ function escapeRegex(s: string): string {
  */
 const BUILTIN_PHYSICAL_ALIASES = new Set(buildAliasIndex().keys());
 
+// Signals that a message is about magnitudes/trading rather than measurements,
+// used to decide whether a bare "500m"/"5t" is 500 million / 5 trillion (skip)
+// or 500 metres / 5 tonnes (convert). `m`/`t` are excluded from the suffix list
+// because they're exactly the ambiguous tokens we're deciding about.
+const MAGNITUDE_SIGNAL =
+  /\b\d[\d,]*(?:\.\d+)?\s?(?:k|b|bn|bil|billion|mil|million|mn|thousand|trillion|tril)\b/i;
+const TRADING_SIGNAL =
+  /\b(?:sold|sell|selling|sells|buy|buying|buys|bought|wts|wtb|price|priced|pricing|worth|cost|costs|offer|offers|offering|trade|trading|meso|mesos)\b/i;
+
+/** Does the text read like magnitude/trading talk (so "500m" ≈ 500 million)? */
+function hasMagnitudeContext(text: string): boolean {
+  return MAGNITUDE_SIGNAL.test(text) || TRADING_SIGNAL.test(text);
+}
+
 /**
  * Replace a region with same-length spaces so later regexes ignore it while
  * every surviving character keeps its original index.
@@ -181,6 +195,8 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
   const customUnits = opts.customUnits ?? [];
   const index = buildAliasIndex(customUnits);
   const inch = index.get('inch');
+  // Only relevant in passive mode: is this magnitude/trading talk?
+  const magnitudeContext = mode === 'auto' && hasMagnitudeContext(text);
 
   let work = normalizeQuotes(maskNoise(text));
   const results: ParsedQuantity[] = [];
@@ -238,9 +254,10 @@ export function parseQuantities(text: string, opts: ParseOptions = {}): ParsedQu
       continue;
     }
 
-    // Magnitude-suffix letters (`m`, `t`) attached to a number are skipped in
-    // auto mode — "500m" reads as 500 million, not 500 metres.
-    if (mode === 'auto' && MAGNITUDE_UNIT_ALIASES.has(aliasKey) && gap.length === 0) {
+    // Magnitude-suffix letters (`m`, `t`) are skipped only when the message
+    // reads like magnitude/trading talk — "sold for 500m" / "500m or 5b" is 500
+    // million, but "the 500m sprint" / "5m tall" stays metres.
+    if (magnitudeContext && MAGNITUDE_UNIT_ALIASES.has(aliasKey)) {
       continue;
     }
 

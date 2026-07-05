@@ -11,10 +11,13 @@ describe('parseQuantities — formats', () => {
     }
   });
 
-  it('does not auto-convert bare "Nm"/"Nt" — they read as magnitudes (million/trillion)', () => {
+  it('treats bare "Nm"/"Nt" as magnitudes only in trading/magnitude context', () => {
+    // magnitude/trading context ("5b", "sold", "wts") → 500m is 500 million, not metres
     expect(ids('sold a clean et for 500m instead of 5b')).toEqual([]);
-    expect(ids('1m')).toEqual([]);
-    expect(ids('5t')).toEqual([]);
+    expect(ids('wts pet 500m')).toEqual([]);
+    // no such context → 500m is metres, 5t is tonnes
+    expect(ids('the 500m sprint was fast')).toEqual([{ id: 'meter', value: 500 }]);
+    expect(ids('5t')).toEqual([{ id: 'tonne', value: 5 }]);
   });
 
   it('still converts "1M"/"500m" in explicit mode (/convert)', () => {
