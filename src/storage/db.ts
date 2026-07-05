@@ -52,6 +52,20 @@ export function getDb(): Database.Database {
   if (!cols.some((c) => c.name === 'base_currency')) {
     db.exec(`ALTER TABLE guild_config ADD COLUMN base_currency TEXT NOT NULL DEFAULT 'USD'`);
   }
+
+  // One-time migration: auto-detection is now opt-in, so turn it off for every
+  // server that already has a config row (servers with no row use the new
+  // default of false). Guarded by a flag so admins can re-enable it afterwards.
+  const AUTODETECT_MIGRATION = 'migration:autodetect_off_v1';
+  const migrated = db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(AUTODETECT_MIGRATION);
+  if (!migrated) {
+    const info = db.prepare(`UPDATE guild_config SET auto_detect = 0`).run();
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run(
+      AUTODETECT_MIGRATION,
+      `disabled ${info.changes} server(s)`,
+    );
+    if (info.changes > 0) console.log(`🔕 Auto-detect disabled for ${info.changes} existing server(s).`);
+  }
   return db;
 }
 

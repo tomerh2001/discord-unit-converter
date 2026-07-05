@@ -42,7 +42,8 @@ export function loadConfig(): Config {
     // Clamp to the same 0–6 range the /settings command enforces, so a bad env
     // value can't reach toFixed/toPrecision and throw a RangeError.
     defaultPrecision: Math.min(Math.max(optionalInt('DEFAULT_PRECISION', 2), 0), 6),
-    autoDetectDefault: (process.env.AUTO_DETECT_DEFAULT ?? 'true').toLowerCase() !== 'false',
+    // Passive auto-detection is opt-in: OFF unless AUTO_DETECT_DEFAULT="true".
+    autoDetectDefault: (process.env.AUTO_DETECT_DEFAULT ?? 'false').toLowerCase() === 'true',
   };
   return cached;
 }

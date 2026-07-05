@@ -18,7 +18,7 @@ Bot:   It's 30°C (**86°F**) today and I drove 100 km/h (**62.14 mph**) for 26 
 
 ## ✨ Features
 
-- **Automatic detection** — every message is scanned; if it contains units, the bot replies with conversions. No command needed.
+- **Automatic detection (opt-in)** — when enabled, every message is scanned; if it contains units, the bot replies with conversions, no command needed. It's **off by default** — an admin turns it on per server with `/settings autodetect enabled: true`.
 - **`/convert` command** — `/convert 10 km to miles`, `/convert 72f`, `/convert 5'11"`. The auto-detector and the command share the exact same engine.
 - **Right-click → Convert** — a message context-menu command: right-click (or long-press) any message → **Apps → Convert Units** to convert it on demand. It posts the conversion publicly as the standard "used Convert Units" response (a "no units found" notice stays private to you).
 - **Flexible formats** — `1M`, `1m`, `1 Meter`, `1 meter`, `1.5km`, `5,000 m`, `-40c`, `350F`, `5'11"`, `5 ft 11 in` all work.
@@ -127,9 +127,10 @@ you only need to re-run when the commands themselves change.
 
 ## 🧑‍💻 Usage
 
-### Automatic detection
+### Automatic detection (opt-in)
 
-Just talk normally. If a message contains a recognizable quantity, the bot replies:
+Off by default. An admin enables it per server with `/settings autodetect enabled: true`.
+Once on, just talk normally — if a message contains a recognizable quantity, the bot replies:
 
 | You type | Bot replies |
 | --- | --- |
@@ -284,7 +285,7 @@ npm run format     # prettier --write
 | `GUILD_ID` | — | (global) | Register commands to one guild for instant updates |
 | `DATA_DIR` | — | `./data` | Where the SQLite file lives |
 | `DEFAULT_PRECISION` | — | `2` | Default decimal places |
-| `AUTO_DETECT_DEFAULT` | — | `true` | Whether auto-detection is on for new servers |
+| `AUTO_DETECT_DEFAULT` | — | `false` | Whether passive auto-detection defaults on for new servers |
 
 ---
 
